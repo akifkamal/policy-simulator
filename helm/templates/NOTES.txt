@@ -1,0 +1,30 @@
+====================================================================
+  Policy Simulator has been deployed!
+====================================================================
+
+Components:
+  - Backend API:  {{ include "policy-simulator.fullname" . }}-backend
+  - Celery Worker: {{ include "policy-simulator.fullname" . }}-worker
+  - Frontend:     {{ include "policy-simulator.fullname" . }}-frontend
+  - PostgreSQL:   {{ include "policy-simulator.postgresql.host" . }}
+  - Redis:        {{ include "policy-simulator.redis.host" . }}
+
+{{- if .Values.ingress.enabled }}
+
+Access the application:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- end }}
+
+{{- if (index .Values "kube-prometheus-stack" "enabled") }}
+
+Monitoring:
+  - Prometheus is scraping backend metrics at /metrics
+  - Grafana dashboard "Policy Simulator" is auto-provisioned
+  - Access Grafana: kubectl port-forward svc/{{ .Release.Name }}-grafana 3001:80
+    Default credentials: admin / {{ (index .Values "kube-prometheus-stack" "grafana" "adminPassword") }}
+{{- end }}
+
+Verify deployment:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}

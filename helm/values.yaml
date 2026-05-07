@@ -1,0 +1,134 @@
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# -- Backend (FastAPI) configuration
+backend:
+  image:
+    repository: policy-simulator/backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+# -- Celery Worker configuration (uses same image as backend)
+worker:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+# -- Frontend (Next.js) configuration
+frontend:
+  image:
+    repository: policy-simulator/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 75
+
+# -- Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: policy-simulator.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /health
+          pathType: Exact
+          service: backend
+        - path: /metrics
+          pathType: Exact
+          service: backend
+  tls: []
+  # - secretName: policy-simulator-tls
+  #   hosts:
+  #     - policy-simulator.local
+
+# -- Secrets (override via --set or a secret values file)
+secrets:
+  openaiApiKey: ""
+  secretKey: "change-me-to-a-random-secret"
+  seedEmail: "admin@cmhc.ca"
+  seedPassword: "password"
+
+# -- Non-sensitive configuration
+config:
+  corsAllowedOrigins: "https://policy-simulator.local"
+
+# -- PostgreSQL subchart configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: ""
+    database: policy_sim
+  primary:
+    persistence:
+      size: 10Gi
+
+# -- Redis subchart configuration
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 2Gi
+
+# -- Prometheus + Grafana (kube-prometheus-stack) configuration
+kube-prometheus-stack:
+  enabled: true
+  prometheus:
+    prometheusSpec:
+      serviceMonitorSelectorNilUsesHelmValues: false
+  grafana:
+    enabled: true
+    adminPassword: admin
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
