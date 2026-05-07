@@ -179,7 +179,7 @@ The worker uses the same codebase as the API server (same Docker image, differen
 
 ```mermaid
 sequenceDiagram
-    participant U as User (Browser)
+    participant U as User
     participant FE as Frontend
     participant API as Backend API
     participant R as Redis
@@ -187,32 +187,32 @@ sequenceDiagram
     participant LLM as OpenAI
     participant DB as PostgreSQL
 
-    U->>FE: "What happens if we cap rent increases at 2%?"
-    FE->>API: POST /api/messages (user message)
+    U->>FE: What happens if we cap rent increases at 2%?
+    FE->>API: POST /api/messages
     API->>DB: Save user message
-    FE->>API: POST /api/runs (create simulation)
-    API->>DB: Create run (status: pending)
+    FE->>API: POST /api/runs
+    API->>DB: Create run, status pending
     API->>R: Enqueue run_simulation task
-    API-->>FE: 202 Accepted {run_id, status: pending}
+    API-->>FE: 202 Accepted, run_id + status pending
 
     loop Every 3 seconds
-        FE->>API: GET /api/runs/{id}
-        API-->>FE: {status: running}
+        FE->>API: GET /api/runs/id
+        API-->>FE: status running
     end
 
     R->>W: Deliver task
-    W->>DB: Set status: running
+    W->>DB: Set status running
     W->>LLM: Intent detection
-    LLM-->>W: {policy_type: rent_control, region: ON, ...}
+    LLM-->>W: policy_type rent_control, region ON
     W->>LLM: Data search + download
     W->>LLM: Generate modelling script
-    W->>W: Execute script (subprocess)
+    W->>W: Execute script in subprocess
     W->>LLM: Narrate results
-    W->>DB: Save narration, charts, tables; status: complete
+    W->>DB: Save narration, charts, tables - status complete
     W->>DB: Save assistant message
 
-    FE->>API: GET /api/runs/{id}
-    API-->>FE: {status: complete, narration, charts, tables}
+    FE->>API: GET /api/runs/id
+    API-->>FE: status complete + narration + charts + tables
     FE->>U: Display narration + charts + tables
 ```
 
